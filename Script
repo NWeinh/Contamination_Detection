@@ -1,0 +1,251 @@
+library(Rsamtools)
+library(VariantAnnotation)
+library(GenomicRanges)
+
+pileupFreq <- function(pileupres) {
+  nucleotides <- levels(pileupres$nucleotide)
+  res <- split(pileupres, pileupres$seqnames)
+  res <- lapply(res, function (x) {split(x, x$pos)})
+  res <- lapply(res, function (positionsplit) {
+    nuctab <- lapply(positionsplit, function(each) {
+      chr = as.character(unique(each$seqnames))
+      pos = as.character(unique(each$pos))
+      tablecounts <- sapply(nucleotides, function (n) {sum(each$count[each$nucleotide == n])})
+      c(chr,pos, tablecounts)
+    })
+    nuctab <- data.frame(do.call("rbind", nuctab),stringsAsFactors=F)
+    rownames(nuctab) <- NULL
+    nuctab
+  })
+  res <- data.frame(do.call("rbind", res),stringsAsFactors=F)
+  rownames(res) <- NULL
+  colnames(res) <- c("seqnames","start",levels(pileupres$nucleotide))
+  res[3:ncol(res)] <- apply(res[3:ncol(res)], 2, as.numeric)
+  res
+}
+
+
+setwd("/illumina/runs/niels_working_dir/tools/Test/")
+Panel=read.csv2("Panel_091015.csv", sep=",")
+
+setwd("/illumina/runs/ExternalData/EGAS00001001147/")
+Samples=read.csv2("SampleSheetUK_EGAS00001001147_fixed.txt", sep="\t")
+colnames(Samples)[4]="Type"
+colnames(Samples)[3]="Sample"
+
+Samples=Samples[with(Samples, order(PatID,Type)), ]
+Samples_Normal=Samples[Samples$Type=="Peripheral Blood",]
+Samples_Tumor=Samples[Samples$Type=="Bone Marrow",]
+
+
+
+Panel=Panel[with(Panel,order(contig,position)),]
+
+#Scheiss UK data!!! Regionen fehlen...
+#Panel=Panel[-c(68,170,176,197),]
+#Panel=Panel[-13,]
+
+QC_Summary_Normal=as.data.frame(matrix(1,ncol=12,nrow=463))
+colnames(QC_Summary_Normal)=c("PatientID", "SampleID", "N_Homo", "Pro_Alt", "Pro_A1", "Pro_A2", "Sum_Alt","Sum_A1","Sum_A2", "ProContaAlt", "ProContaA1", "ProContaA2")
+
+for (i in 1:463){
+  tryCatch({
+    vcf.ranges=GRanges(seqnames=Panel$contig, ranges=IRanges(start=Panel$position, end=Panel$position), strand="*", paramRangeID="NA", REF=Panel$ref_allele, ALT=Panel$alt_allele, QUAL="NA", FILTER="REJECT", SNP=Panel$SNP)
+    setwd("/illumina/runs/ExternalData/EGAS00001001147/")
+    bamfile <- as.character(Samples_Normal$Sample[i])
+    bf <- BamFile(bamfile)
+    param <- ScanBamParam(which=vcf.ranges)
+    p_param <- PileupParam(max_depth=1000, ignore_query_Ns=FALSE)
+    res <- pileup(bf, scanBamParam=param, pileupParam=p_param)
+    Table=pileupFreq(res)
+    A=merge(Panel, Table, by.x="position", by.y="start", all.x=T)
+    vcf.ranges=vcf.ranges[which(vcf.ranges$SNP %in% A[which(!is.na(A$seqnames)),"SNP"]),]
+    
+    Table$REF_A=as.vector(vcf.ranges$REF)
+    Table$ALT_A=as.vector(unlist(vcf.ranges$ALT))
+    Table$REF="NA"
+    Table$ALT="NA"
+    Table$REF=ifelse(vcf.ranges$REF=="T", Table$T, Table$REF)
+    Table$REF=ifelse(vcf.ranges$REF=="A", Table$A, Table$REF)
+    Table$REF=ifelse(vcf.ranges$REF=="C", Table$C, Table$REF)
+    Table$REF=ifelse(vcf.ranges$REF=="G", Table$G, Table$REF)
+    Table$ALT=ifelse(unlist(vcf.ranges$ALT)=="T", Table$T, Table$ALT)
+    Table$ALT=ifelse(unlist(vcf.ranges$ALT)=="A", Table$A, Table$ALT)
+    Table$ALT=ifelse(unlist(vcf.ranges$ALT)=="C", Table$C, Table$ALT)
+    Table$ALT=ifelse(unlist(vcf.ranges$ALT)=="G", Table$G, Table$ALT)
+    
+    Table$A1=ifelse(Table$REF_A=="A"&Table$ALT_A=="C", Table[,5],0)
+    Table$A1=ifelse(Table$REF_A=="A"&Table$ALT_A=="G", Table[,4],Table$A1)
+    Table$A1=ifelse(Table$REF_A=="A"&Table$ALT_A=="T", Table[,4],Table$A1)
+    Table$A1=ifelse(Table$REF_A=="C"&Table$ALT_A=="A", Table[,5],Table$A1)
+    Table$A1=ifelse(Table$REF_A=="C"&Table$ALT_A=="G", Table[,3],Table$A1)
+    Table$A1=ifelse(Table$REF_A=="C"&Table$ALT_A=="T", Table[,3],Table$A1)
+    Table$A1=ifelse(Table$REF_A=="G"&Table$ALT_A=="A", Table[,4],Table$A1)
+    Table$A1=ifelse(Table$REF_A=="G"&Table$ALT_A=="C", Table[,3],Table$A1)
+    Table$A1=ifelse(Table$REF_A=="G"&Table$ALT_A=="T", Table[,3],Table$A1)
+    Table$A1=ifelse(Table$REF_A=="T"&Table$ALT_A=="A", Table[,4],Table$A1)
+    Table$A1=ifelse(Table$REF_A=="T"&Table$ALT_A=="C", Table[,3],Table$A1)
+    Table$A1=ifelse(Table$REF_A=="T"&Table$ALT_A=="G", Table[,3],Table$A1)
+    
+    Table$A2=ifelse(Table$REF_A=="A"&Table$ALT_A=="C", Table[,6],0)
+    Table$A2=ifelse(Table$REF_A=="A"&Table$ALT_A=="G", Table[,6],Table$A2)
+    Table$A2=ifelse(Table$REF_A=="A"&Table$ALT_A=="T", Table[,5],Table$A2)
+    Table$A2=ifelse(Table$REF_A=="C"&Table$ALT_A=="A", Table[,6],Table$A2)
+    Table$A2=ifelse(Table$REF_A=="C"&Table$ALT_A=="G", Table[,6],Table$A2)
+    Table$A2=ifelse(Table$REF_A=="C"&Table$ALT_A=="T", Table[,5],Table$A2)
+    Table$A2=ifelse(Table$REF_A=="G"&Table$ALT_A=="A", Table[,6],Table$A2)
+    Table$A2=ifelse(Table$REF_A=="G"&Table$ALT_A=="C", Table[,6],Table$A2)
+    Table$A2=ifelse(Table$REF_A=="G"&Table$ALT_A=="T", Table[,4],Table$A2)
+    Table$A2=ifelse(Table$REF_A=="T"&Table$ALT_A=="A", Table[,5],Table$A2)
+    Table$A2=ifelse(Table$REF_A=="T"&Table$ALT_A=="C", Table[,5],Table$A2)
+    Table$A2=ifelse(Table$REF_A=="T"&Table$ALT_A=="G", Table[,4],Table$A2)
+    Table=Table[,c(1:2,11:16)]
+    
+    Table$P_REF=round(100/(as.numeric(Table$REF)+as.numeric(Table$ALT))*as.numeric(Table$REF),0)
+    
+    #0%
+    #Table$Homo=ifelse(Table$P_REF==100|Table$P_REF==0, "yes", "no")
+    
+    #1%
+    #Table$Homo=ifelse(Table$P_REF>=99|Table$P_REF<=1, "yes", "no")
+    
+    #5%
+    #Table$Homo=ifelse(Table$P_REF>=95|Table$P_REF<=5, "yes", "no")
+    
+    #10%
+    Table$Homo=ifelse(Table$P_REF>=90|Table$P_REF<=10, "yes", "no")
+    
+    #set to 50 reads
+    Table$Homo=ifelse(as.numeric(Table$REF)+as.numeric(Table$ALT)<50, "no", Table$Homo)
+    
+    Table$Conta=as.numeric(ifelse(Table$P_REF>=90, Table$ALT, Table$REF))
+    Table$Geno_A=ifelse(Table$P_REF>=90, Table$REF_A, Table$ALT_A)
+    Table$Conta_A=ifelse(Table$P_REF>=90, Table$ALT_A, Table$REF_A)
+    
+    Table=Table[Table$Homo=="yes",]
+    
+    assign(paste("Pat", Samples_Normal$PatID[i], Samples_Normal$Sample[i], Samples_Normal$Type[i], "QC","Panel" , sep="_"), Table)
+    Table_QC=Table
+    Table_QC$Norm=as.numeric(ifelse(Table_QC$P_REF>=90, Table_QC$REF, Table_QC$ALT))
+    Table_QC$ProContaAlt=100/(Table_QC$Norm+Table_QC$Conta+Table_QC$A1+Table_QC$A2)*(Table_QC$Conta-Table_QC$A1-Table_QC$A2)
+    Table_QC$ProContaA1=100/(Table_QC$Norm+Table_QC$Conta+Table_QC$A1+Table_QC$A2)*(Table_QC$A1-Table_QC$Conta-Table_QC$A2)
+    Table_QC$ProContaA2=100/(Table_QC$Norm+Table_QC$Conta+Table_QC$A1+Table_QC$A2)*(Table_QC$A2-Table_QC$Conta-Table_QC$A1)
+    
+    QC_Summary_Normal[i,1]=as.character(Samples_Normal$PatID)[i]
+    QC_Summary_Normal[i,2]=as.character(Samples_Normal$Sample)[i]
+    QC_Summary_Normal[i,3]=dim(Table_QC)[1]
+    QC_Summary_Normal[i,4]=100/dim(Table_QC)[1]*length(which(as.numeric(Table_QC[,11])>1))
+    QC_Summary_Normal[i,5]=100/dim(Table_QC)[1]*length(which(as.numeric(Table_QC[,7])>1))
+    QC_Summary_Normal[i,6]=100/dim(Table_QC)[1]*length(which(as.numeric(Table_QC[,8])>1))
+    QC_Summary_Normal[i,7]=sum(as.numeric(Table_QC[,11]))
+    QC_Summary_Normal[i,8]=sum(as.numeric(Table_QC[,7]))
+    QC_Summary_Normal[i,9]=sum(as.numeric(Table_QC[,8]))
+    QC_Summary_Normal[i,10]=sum(Table_QC$ProContaAlt[which(as.numeric(Table_QC[,11])>1)])/length(which(as.numeric(Table_QC[,11])>1))
+    QC_Summary_Normal[i,11]=sum(Table_QC$ProContaA1[which(as.numeric(Table_QC[,7])>1)])/length(which(as.numeric(Table_QC[,7])>1))
+    QC_Summary_Normal[i,12]=sum(Table_QC$ProContaA2[which(as.numeric(Table_QC[,8])>1)])/length(which(as.numeric(Table_QC[,8])>1))
+  }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")})
+}
+
+QC_Summary_Normal$ProContaA2[is.na(QC_Summary_Normal$ProContaA2)]=0
+QC_Summary_Normal$ProContaA1[is.na(QC_Summary_Normal$ProContaA1)]=0
+
+QC_Summary_Normal$Background=0
+QC_Summary_Normal$Background=ifelse(QC_Summary_Normal$ProContaA1>QC_Summary_Normal$ProContaA2, QC_Summary_Normal$ProContaA1,QC_Summary_Normal$ProContaA2) 
+QC_Summary_Normal$Conta_corrected=ifelse(QC_Summary_Normal$Pro_Alt>3, 1.5*(QC_Summary_Normal$ProContaAlt-QC_Summary_Normal$Background), 0)
+QC_Summary_Normal$Conta_corrected=round(ifelse(QC_Summary_Normal$Conta_corrected<0, 0, QC_Summary_Normal$Conta_corrected),2)
+
+#Tumor
+QC_Summary_Tumor=as.data.frame(matrix(1,ncol=12,nrow=463))
+colnames(QC_Summary_Tumor)=c("PatientID", "SampleID", "N_Homo", "Pro_Alt", "Pro_A1", "Pro_A2", "Sum_Alt","Sum_A1","Sum_A2", "ProContaAlt", "ProContaA1", "ProContaA2")
+
+for (i in 1:463){
+  tryCatch({
+    Table_Normal=get(paste("Pat", Samples_Normal$PatID[i], Samples_Normal$Sample[i], Samples_Normal$Type[i], "QC","Panel" , sep="_"))
+    vcf.ranges2=GRanges(seqnames=Table_Normal$seqnames, ranges=IRanges(start=as.numeric(Table_Normal$start), end=as.numeric(Table_Normal$start)), strand="*", paramRangeID="NA", REF=Table_Normal$Geno_A, ALT=Table_Normal$Conta_A, QUAL="NA", FILTER="REJECT")
+    setwd("/illumina/runs/ExternalData/EGAS00001001147/")
+    bamfile <- as.character(Samples_Tumor$Sample[i])
+    bf <- BamFile(bamfile)
+    param <- ScanBamParam(which=vcf.ranges2)
+    p_param <- PileupParam(max_depth=1000, ignore_query_Ns=FALSE)
+    res <- pileup(bf, scanBamParam=param, pileupParam=p_param)
+    Table=pileupFreq(res)
+    Table$REF_A=as.vector(vcf.ranges2$REF)
+    Table$ALT_A=as.vector(unlist(vcf.ranges2$ALT))
+    Table$REF="NA"
+    Table$ALT="NA"
+    Table$REF=ifelse(vcf.ranges2$REF=="T", Table$T, Table$REF)
+    Table$REF=ifelse(vcf.ranges2$REF=="A", Table$A, Table$REF)
+    Table$REF=ifelse(vcf.ranges2$REF=="C", Table$C, Table$REF)
+    Table$REF=ifelse(vcf.ranges2$REF=="G", Table$G, Table$REF)
+    Table$ALT=ifelse(unlist(vcf.ranges2$ALT)=="T", Table$T, Table$ALT)
+    Table$ALT=ifelse(unlist(vcf.ranges2$ALT)=="A", Table$A, Table$ALT)
+    Table$ALT=ifelse(unlist(vcf.ranges2$ALT)=="C", Table$C, Table$ALT)
+    Table$ALT=ifelse(unlist(vcf.ranges2$ALT)=="G", Table$G, Table$ALT)
+    
+    Table$A1=ifelse(Table$REF_A=="A"&Table$ALT_A=="C", Table[,5],0)
+    Table$A1=ifelse(Table$REF_A=="A"&Table$ALT_A=="G", Table[,4],Table$A1)
+    Table$A1=ifelse(Table$REF_A=="A"&Table$ALT_A=="T", Table[,4],Table$A1)
+    Table$A1=ifelse(Table$REF_A=="C"&Table$ALT_A=="A", Table[,5],Table$A1)
+    Table$A1=ifelse(Table$REF_A=="C"&Table$ALT_A=="G", Table[,3],Table$A1)
+    Table$A1=ifelse(Table$REF_A=="C"&Table$ALT_A=="T", Table[,3],Table$A1)
+    Table$A1=ifelse(Table$REF_A=="G"&Table$ALT_A=="A", Table[,4],Table$A1)
+    Table$A1=ifelse(Table$REF_A=="G"&Table$ALT_A=="C", Table[,3],Table$A1)
+    Table$A1=ifelse(Table$REF_A=="G"&Table$ALT_A=="T", Table[,3],Table$A1)
+    Table$A1=ifelse(Table$REF_A=="T"&Table$ALT_A=="A", Table[,4],Table$A1)
+    Table$A1=ifelse(Table$REF_A=="T"&Table$ALT_A=="C", Table[,3],Table$A1)
+    Table$A1=ifelse(Table$REF_A=="T"&Table$ALT_A=="G", Table[,3],Table$A1)
+    
+    Table$A2=ifelse(Table$REF_A=="A"&Table$ALT_A=="C", Table[,6],0)
+    Table$A2=ifelse(Table$REF_A=="A"&Table$ALT_A=="G", Table[,6],Table$A2)
+    Table$A2=ifelse(Table$REF_A=="A"&Table$ALT_A=="T", Table[,5],Table$A2)
+    Table$A2=ifelse(Table$REF_A=="C"&Table$ALT_A=="A", Table[,6],Table$A2)
+    Table$A2=ifelse(Table$REF_A=="C"&Table$ALT_A=="G", Table[,6],Table$A2)
+    Table$A2=ifelse(Table$REF_A=="C"&Table$ALT_A=="T", Table[,5],Table$A2)
+    Table$A2=ifelse(Table$REF_A=="G"&Table$ALT_A=="A", Table[,6],Table$A2)
+    Table$A2=ifelse(Table$REF_A=="G"&Table$ALT_A=="C", Table[,6],Table$A2)
+    Table$A2=ifelse(Table$REF_A=="G"&Table$ALT_A=="T", Table[,4],Table$A2)
+    Table$A2=ifelse(Table$REF_A=="T"&Table$ALT_A=="A", Table[,5],Table$A2)
+    Table$A2=ifelse(Table$REF_A=="T"&Table$ALT_A=="C", Table[,5],Table$A2)
+    Table$A2=ifelse(Table$REF_A=="T"&Table$ALT_A=="G", Table[,4],Table$A2)
+    Table=Table[,c(1:2,11:16)]
+    
+    Table$P_REF=round(100/(as.numeric(Table$REF)+as.numeric(Table$ALT))*as.numeric(Table$REF),0)
+    
+    Table$Homo=ifelse(Table$P_REF>=90|Table$P_REF<=10, "yes", "no")
+    Table$Conta=as.numeric(Table$ALT)
+    #Table$Conta=as.numeric(ifelse(Table$P_REF>80, Table$ALT, Table$REF))
+    
+    #Reads hochsetzen
+    Table=Table[which(as.numeric(Table$REF)+as.numeric(Table$ALT)>50),]
+    
+    Table$Norm=as.numeric(Table$REF)
+    Table$ProContaAlt=100/(Table$Norm+Table$Conta+Table$A1+Table$A2)*(Table$Conta-Table$A1-Table$A2)
+    Table$ProContaA1=100/(Table$Norm+Table$Conta+Table$A1+Table$A2)*(Table$A1-Table$Conta-Table$A2)
+    Table$ProContaA2=100/(Table$Norm+Table$Conta+Table$A1+Table$A2)*(Table$A2-Table$Conta-Table$A1)
+    
+    QC_Summary_Tumor[i,1]=as.character(Samples_Tumor$PatID)[i]
+    QC_Summary_Tumor[i,2]=as.character(Samples_Tumor$Sample)[i]
+    QC_Summary_Tumor[i,3]=dim(Table)[1]
+    QC_Summary_Tumor[i,4]=100/dim(Table)[1]*length(which(as.numeric(Table[,11])>0))
+    QC_Summary_Tumor[i,5]=100/dim(Table)[1]*length(which(as.numeric(Table[,7])>0))
+    QC_Summary_Tumor[i,6]=100/dim(Table)[1]*length(which(as.numeric(Table[,8])>0))
+    QC_Summary_Tumor[i,7]=sum(as.numeric(Table[,11]))
+    QC_Summary_Tumor[i,8]=sum(as.numeric(Table[,7]))
+    QC_Summary_Tumor[i,9]=sum(as.numeric(Table[,8]))
+    QC_Summary_Tumor[i,10]=sum(Table$ProContaAlt[which(as.numeric(Table[,11])>0)])/length(which(as.numeric(Table[,11])>0))
+    QC_Summary_Tumor[i,11]=sum(Table$ProContaA1[which(as.numeric(Table[,7])>0)])/length(which(as.numeric(Table[,7])>0))
+    QC_Summary_Tumor[i,12]=sum(Table$ProContaA2[which(as.numeric(Table[,8])>0)])/length(which(as.numeric(Table[,8])>0))
+    
+    assign(paste("Pat", Samples_Tumor$PatID[i], Samples_Tumor$Sample[i], Samples_Tumor$Type[i], "QC","Panel" , sep="_"), Table)
+  }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")})
+}
+
+QC_Summary_Tumor$ProContaA2[is.na(QC_Summary_Tumor$ProContaA2)]=0
+QC_Summary_Tumor$ProContaA1[is.na(QC_Summary_Tumor$ProContaA1)]=0
+
+QC_Summary_Tumor$Background=0
+QC_Summary_Tumor$Background=ifelse(QC_Summary_Tumor$ProContaA1>QC_Summary_Tumor$ProContaA2, QC_Summary_Tumor$ProContaA1,QC_Summary_Tumor$ProContaA2) 
+QC_Summary_Tumor$Conta_corrected=ifelse(QC_Summary_Tumor$Pro_Alt>3, 1.5*(QC_Summary_Tumor$ProContaAlt-QC_Summary_Tumor$Background), 0)
+QC_Summary_Tumor$Conta_corrected=round(ifelse(QC_Summary_Tumor$Conta_corrected<0, 0, QC_Summary_Tumor$Conta_corrected),2)
+
+QC_Summary=rbind(QC_Summary_Normal, QC_Summary_Tumor)
