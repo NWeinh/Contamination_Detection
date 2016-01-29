@@ -8,9 +8,5 @@ panel <- panel[with(panel,order(contig,position)),]
 panel$contig <- paste0('chr', panel$contig)
 #panel <- subset(panel, Source=='BMCMED')
 
-qcb <- estCont(b, panel, type='germline', percentHomo=10, minReads=10, maxContLevelGerm=5)
-qct <- estCont(t, panel, type='tumor', percentHomo=10, minReads=10)
-
-rbind(qcb,qct)
-
-
+res <- estCont(b, t, panel, mode='pair', percentHomo=10, minReads=10, maxContLevelGerm=5)
+rbind(res$QCGerm, res$QCTumor)
