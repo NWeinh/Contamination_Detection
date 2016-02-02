@@ -114,7 +114,7 @@ library(GenomicRanges)
                Type = 'Germline'
     )
     QC$Background <- ifelse(QC$PercentCont_A1 > QC$PercentCont_A2, QC$PercentCont_A1, QC$PercentCont_A2)
-    QC$ContAdj <- ifelse(QC$N_HOMO / 100 * QC$Percent_Alt > aberrantSNP, 1.5 * (QC$PercentCont_Alt - QC$Background), 0)
+    QC$ContAdj <- ifelse(QC$N_HOMO / 100 * QC$Percent_Alt > aberrantSNP, 2 * (QC$PercentCont_Alt - QC$Background), 0)
     QC$ContAdj <- round(ifelse(QC$ContAdj < 0, 0, QC$ContAdj), 2)
   }
   
@@ -142,7 +142,7 @@ library(GenomicRanges)
                Type = 'Tumor'
     )
     QC$Background <- ifelse(QC$PercentCont_A1 > QC$PercentCont_A2, QC$PercentCont_A1, QC$PercentCont_A2)
-    QC$ContAdj <- ifelse(QC$N_HOMO / 100 * QC$Percent_Alt > aberrantSNP, 1.5 * (QC$PercentCont_Alt - QC$Background), 0)
+    QC$ContAdj <- ifelse(QC$N_HOMO / 100 * QC$Percent_Alt > aberrantSNP, 2 * (QC$PercentCont_Alt - QC$Background), 0)
     QC$ContAdj <- round(ifelse(QC$ContAdj < 0, 0, QC$ContAdj), 2)
   }
   return(list(QC=QC, tab=tab))
