@@ -2,7 +2,7 @@ library(Rsamtools)
 library(VariantAnnotation)
 library(GenomicRanges)
 
-pileupFreq <- function(pileupres) {
+.pileupFreq <- function(pileupres) {
   nucleotides <- levels(pileupres$nucleotide)
   res <- split(pileupres, pileupres$seqnames)
   res <- lapply(res, function (x) {split(x, x$pos)})
@@ -99,16 +99,23 @@ pileupFreq <- function(pileupres) {
     tab_QC$ProContaA2 <- 100 / (tab_QC$Norm+tab_QC$Conta + tab_QC$A1 + tab_QC$A2) * (tab_QC$A2)
     
     QC <- list(N_HOMO = dim(tab_QC)[1],
-               Percent_ALT = 100 / dim(tab_QC)[1] * length(which(as.numeric(tab_QC[ ,12]) > contPerSNP)),
-               Percent_A1 = 100 / dim(tab_QC)[1] * length(which(as.numeric(tab_QC[ ,7]) > contPerSNP)),
-               Percent_A2 = 100 / dim(tab_QC)[1] * length(which(as.numeric(tab_QC[ ,8]) > contPerSNP)),
-               Sum_Alt = sum(as.numeric(tab_QC[ ,12])),
+               NumSNP_Alt = length(which(as.numeric(tab_QC[ ,12]) > contPerSNP)),
+               NumSNP_A1 = length(which(as.numeric(tab_QC[ ,7]) > contPerSNP)),
+               NumSNP_A2 = length(which(as.numeric(tab_QC[ ,8]) > contPerSNP)),
+               Sum_ALT = sum(as.numeric(tab_QC[ ,12])),
                Sum_A1 = sum(as.numeric(tab_QC[ ,7])),
                Sum_A2 = sum(as.numeric(tab_QC[ ,8])),
+               Percent_Alt = 100 / dim(tab_QC)[1] * length(which(as.numeric(tab_QC[ ,12]) > contPerSNP)),
+               Percent_A1 = 100 / dim(tab_QC)[1] * length(which(as.numeric(tab_QC[ ,7]) > contPerSNP)),
+               Percent_A2 = 100 / dim(tab_QC)[1] * length(which(as.numeric(tab_QC[ ,8]) > contPerSNP)),
                PercentCont_Alt = sum(tab_QC$ProContaAlt[which(as.numeric(tab_QC[ ,12]) > contPerSNP)]) / dim(tab)[1],
                PercentCont_A1 = sum(tab_QC$ProContaA1[which(as.numeric(tab_QC[ ,7]) > contPerSNP)]) / dim(tab)[1],
-               PercentCont_A2 = sum(tab_QC$ProContaA2[which(as.numeric(tab_QC[ ,8]) > contPerSNP)]) / dim(tab)[1]
+               PercentCont_A2 = sum(tab_QC$ProContaA2[which(as.numeric(tab_QC[ ,8]) > contPerSNP)]) / dim(tab)[1],
+               Type = 'Germline'
     )
+    QC$Background <- ifelse(QC$PercentCont_A1 > QC$PercentCont_A2, QC$PercentCont_A1, QC$PercentCont_A2)
+    QC$ContAdj <- ifelse(QC$N_HOMO / 100 * QC$Percent_Alt > aberrantSNP, 1.5 * (QC$PercentCont_Alt - QC$Background), 0)
+    QC$ContAdj <- round(ifelse(QC$ContAdj < 0, 0, QC$ContAdj), 2)
   }
   
   if (type=='tumor') {
@@ -120,25 +127,28 @@ pileupFreq <- function(pileupres) {
     tab$ProContaA2 <- 100 / (tab$Norm + tab$Conta + tab$A1 + tab$A2) * (tab$A2)
     
     QC <- list(N_HOMO = dim(tab)[1],
-               Percent_ALT = 100 / dim(tab)[1] * length(which(as.numeric(tab[ ,12]) > contPerSNP)),
-               Percent_A1 = 100 / dim(tab)[1] * length(which(as.numeric(tab[ ,7]) > contPerSNP)),
-               Percent_A2 = 100 / dim(tab)[1] * length(which(as.numeric(tab[ ,8]) > contPerSNP)),
+               NumSNP_Alt = length(which(as.numeric(tab[ ,12]) > contPerSNP)),
+               NumSNP_A1 = length(which(as.numeric(tab[ ,7]) > contPerSNP)),
+               NumSNP_A2 = length(which(as.numeric(tab[ ,8]) > contPerSNP)),
                Sum_Alt = sum(as.numeric(tab[ ,12])),
                Sum_A1 = sum(as.numeric(tab[ ,7])),
                Sum_A2 = sum(as.numeric(tab[ ,8])),
+               Percent_Alt = 100 / dim(tab)[1] * length(which(as.numeric(tab[ ,12]) > contPerSNP)),
+               Percent_A1 = 100 / dim(tab)[1] * length(which(as.numeric(tab[ ,7]) > contPerSNP)),
+               Percent_A2 = 100 / dim(tab)[1] * length(which(as.numeric(tab[ ,8]) > contPerSNP)),
                PercentCont_Alt = sum(tab$ProContaAlt[which(as.numeric(tab[ ,12]) > contPerSNP)]) / dim(tab)[1],
                PercentCont_A1 = sum(tab$ProContaA1[which(as.numeric(tab[ ,7]) > contPerSNP)]) / dim(tab)[1],
-               PercentCont_A2 = sum(tab$ProContaA2[which(as.numeric(tab[ ,8]) > contPerSNP)]) / dim(tab)[1]
+               PercentCont_A2 = sum(tab$ProContaA2[which(as.numeric(tab[ ,8]) > contPerSNP)]) / dim(tab)[1],
+               Type = 'Tumor'
     )
+    QC$Background <- ifelse(QC$PercentCont_A1 > QC$PercentCont_A2, QC$PercentCont_A1, QC$PercentCont_A2)
+    QC$ContAdj <- ifelse(QC$N_HOMO / 100 * QC$Percent_Alt > aberrantSNP, 1.5 * (QC$PercentCont_Alt - QC$Background), 0)
+    QC$ContAdj <- round(ifelse(QC$ContAdj < 0, 0, QC$ContAdj), 2)
   }
-  
-  QC$Background <- ifelse(QC$PercentCont_A1 > QC$PercentCont_A2, QC$PercentCont_A1, QC$PercentCont_A2)
-  QC$ContAdj <- ifelse(QC$Percent_ALT > aberrantSNP, 1.5 * (QC$PercentCont_Alt - QC$Background), 0)
-  QC$ContAdj <- round(ifelse(QC$ContAdj < 0, 0, QC$ContAdj), 2)
   return(list(QC=QC, tab=tab))
 }
 
-estCont <- function(bamGermline, bamTumor, panel, mode='pair', percentHomo=10, minReads=25, maxContLevelGerm=10,
+estCont <- function(bamGermline, bamTumor, panel, mode='pair', percentHomo=10, minReads=50, maxContLevelGerm=10,
                     min_base_quality=20, contPerSNP=0, aberrantSNP=3) {
   if(mode == 'pair') {
     ## GERMLINE
@@ -152,7 +162,7 @@ estCont <- function(bamGermline, bamTumor, panel, mode='pair', percentHomo=10, m
                        FILTER = "REJECT", 
                        SNP = panel$SNP)
     res <- .readBam(bamGermline, vcf.ranges, min_base_quality)
-    tab <- pileupFreq(res)
+    tab <- .pileupFreq(res)
     
     QCGerm <- .qcTab('germline', vcf.ranges, tab, contPerSNP, maxContLevelGerm, minReads, percentHomo, aberrantSNP)
     
@@ -167,7 +177,7 @@ estCont <- function(bamGermline, bamTumor, panel, mode='pair', percentHomo=10, m
                            FILTER = "REJECT"
                            )
     resTumor <- .readBam(bamTumor, vcf.ranges2, min_base_quality)
-    tabTumor <- pileupFreq(resTumor)
+    tabTumor <- .pileupFreq(resTumor)
     
     QCTumor <- .qcTab('tumor', vcf.ranges2, tabTumor, contPerSNP, maxContLevelGerm, minReads, percentHomo, aberrantSNP)
   } 

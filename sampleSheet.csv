@@ -1,0 +1,4 @@
+SAMPLE_ID,CONTROL,TUMOR
+CCD201,/data/01-201-B1-DNA-rep1_S1.bam,/data/CCD201-T1-DNA-rep1_S1.bam
+CCD144,~/AWS/storage/patients/alignments/CCD144-B1-DNA/CCD144-B1-DNA_realigned_sorted.bam,~/AWS/storage/patients/alignments/CCD144-T1-DNA/CCD144-T1-DNA_realigned_sorted.bam
+CCD315,~/AWS/storage/patients/alignments/CCD315-B1-DNA/CCD315-B1-DNA_realigned_sorted.bam,~/AWS/storage/patients/alignments/CCD315-T1-DNA/CCD315-T1-DNA_realigned_sorted.bam
