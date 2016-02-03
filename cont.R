@@ -39,61 +39,61 @@ library(GenomicRanges)
   res
 }
 
-.qcTab <- function(type, ranges, tab, contPerSNP, maxContLevelGerm, minReads, percentHomo, aberrantSNP) {
-  tab$REF_A <- as.vector(ranges$REF)
-  tab$ALT_A <- as.vector(ranges$ALT)
-  tab$REF <- NA
-  tab$ALT <- NA
-  tab$REF <- ifelse(ranges$REF == "T", tab$T, tab$REF)
-  tab$REF <- ifelse(ranges$REF == "A", tab$A, tab$REF)
-  tab$REF <- ifelse(ranges$REF == "C", tab$C, tab$REF)
-  tab$REF <- ifelse(ranges$REF == "G", tab$G, tab$REF)
-  tab$ALT <- ifelse(ranges$ALT == "T", tab$T, tab$ALT)
-  tab$ALT <- ifelse(ranges$ALT == "A", tab$A, tab$ALT)
-  tab$ALT <- ifelse(ranges$ALT == "C", tab$C, tab$ALT)
-  tab$ALT <- ifelse(ranges$ALT == "G", tab$G, tab$ALT)
+.qcTab <- function(type, ranges, tab, contPerSNP, maxContLevelGerm, minReads, percentHomo, aberrantSNP, aberrantSNPPercent) {
+  tab$Ref_A <- as.vector(ranges$Ref)
+  tab$Alt_A <- as.vector(ranges$Alt)
+  tab$Ref <- NA
+  tab$Alt <- NA
+  tab$Ref <- ifelse(ranges$Ref == "T", tab$T, tab$Ref)
+  tab$Ref <- ifelse(ranges$Ref == "A", tab$A, tab$Ref)
+  tab$Ref <- ifelse(ranges$Ref == "C", tab$C, tab$Ref)
+  tab$Ref <- ifelse(ranges$Ref == "G", tab$G, tab$Ref)
+  tab$Alt <- ifelse(ranges$Alt == "T", tab$T, tab$Alt)
+  tab$Alt <- ifelse(ranges$Alt == "A", tab$A, tab$Alt)
+  tab$Alt <- ifelse(ranges$Alt == "C", tab$C, tab$Alt)
+  tab$Alt <- ifelse(ranges$Alt == "G", tab$G, tab$Alt)
   
-  tab$A1 <- ifelse(tab$REF_A =="A" & tab$ALT_A == "C", tab[,5], 0)
-  tab$A1 <- ifelse(tab$REF_A =="A" & tab$ALT_A == "G", tab[,4], tab$A1)
-  tab$A1 <- ifelse(tab$REF_A =="A" & tab$ALT_A == "T", tab[,4], tab$A1)
-  tab$A1 <- ifelse(tab$REF_A =="C" & tab$ALT_A == "A", tab[,5], tab$A1)
-  tab$A1 <- ifelse(tab$REF_A =="C" & tab$ALT_A == "G", tab[,3], tab$A1)
-  tab$A1 <- ifelse(tab$REF_A =="C" & tab$ALT_A == "T", tab[,3], tab$A1)
-  tab$A1 <- ifelse(tab$REF_A =="G" & tab$ALT_A == "A", tab[,4], tab$A1)
-  tab$A1 <- ifelse(tab$REF_A =="G" & tab$ALT_A == "C", tab[,3], tab$A1)
-  tab$A1 <- ifelse(tab$REF_A =="G" & tab$ALT_A == "T", tab[,3], tab$A1)
-  tab$A1 <- ifelse(tab$REF_A =="T" & tab$ALT_A == "A", tab[,4], tab$A1)
-  tab$A1 <- ifelse(tab$REF_A =="T" & tab$ALT_A == "C", tab[,3], tab$A1)
-  tab$A1 <- ifelse(tab$REF_A =="T" & tab$ALT_A == "G", tab[,3], tab$A1)
+  tab$A1 <- ifelse(tab$Ref_A =="A" & tab$Alt_A == "C", tab[,5], 0)
+  tab$A1 <- ifelse(tab$Ref_A =="A" & tab$Alt_A == "G", tab[,4], tab$A1)
+  tab$A1 <- ifelse(tab$Ref_A =="A" & tab$Alt_A == "T", tab[,4], tab$A1)
+  tab$A1 <- ifelse(tab$Ref_A =="C" & tab$Alt_A == "A", tab[,5], tab$A1)
+  tab$A1 <- ifelse(tab$Ref_A =="C" & tab$Alt_A == "G", tab[,3], tab$A1)
+  tab$A1 <- ifelse(tab$Ref_A =="C" & tab$Alt_A == "T", tab[,3], tab$A1)
+  tab$A1 <- ifelse(tab$Ref_A =="G" & tab$Alt_A == "A", tab[,4], tab$A1)
+  tab$A1 <- ifelse(tab$Ref_A =="G" & tab$Alt_A == "C", tab[,3], tab$A1)
+  tab$A1 <- ifelse(tab$Ref_A =="G" & tab$Alt_A == "T", tab[,3], tab$A1)
+  tab$A1 <- ifelse(tab$Ref_A =="T" & tab$Alt_A == "A", tab[,4], tab$A1)
+  tab$A1 <- ifelse(tab$Ref_A =="T" & tab$Alt_A == "C", tab[,3], tab$A1)
+  tab$A1 <- ifelse(tab$Ref_A =="T" & tab$Alt_A == "G", tab[,3], tab$A1)
   
-  tab$A2 <- ifelse(tab$REF_A == "A" & tab$ALT_A == "C", tab[,6], 0)
-  tab$A2 <- ifelse(tab$REF_A == "A" & tab$ALT_A == "G", tab[,6], tab$A2)
-  tab$A2 <- ifelse(tab$REF_A == "A" & tab$ALT_A == "T", tab[,5], tab$A2)
-  tab$A2 <- ifelse(tab$REF_A == "C" & tab$ALT_A == "A", tab[,6], tab$A2)
-  tab$A2 <- ifelse(tab$REF_A == "C" & tab$ALT_A == "G", tab[,6], tab$A2)
-  tab$A2 <- ifelse(tab$REF_A == "C" & tab$ALT_A == "T", tab[,5], tab$A2)
-  tab$A2 <- ifelse(tab$REF_A == "G" & tab$ALT_A == "A", tab[,6], tab$A2)
-  tab$A2 <- ifelse(tab$REF_A == "G" & tab$ALT_A == "C", tab[,6], tab$A2)
-  tab$A2 <- ifelse(tab$REF_A == "G" & tab$ALT_A == "T", tab[,4], tab$A2)
-  tab$A2 <- ifelse(tab$REF_A == "T" & tab$ALT_A == "A", tab[,5], tab$A2)
-  tab$A2 <- ifelse(tab$REF_A == "T" & tab$ALT_A == "C", tab[,5], tab$A2)
-  tab$A2 <- ifelse(tab$REF_A == "T" & tab$ALT_A == "G", tab[,4], tab$A2)
+  tab$A2 <- ifelse(tab$Ref_A == "A" & tab$Alt_A == "C", tab[,6], 0)
+  tab$A2 <- ifelse(tab$Ref_A == "A" & tab$Alt_A == "G", tab[,6], tab$A2)
+  tab$A2 <- ifelse(tab$Ref_A == "A" & tab$Alt_A == "T", tab[,5], tab$A2)
+  tab$A2 <- ifelse(tab$Ref_A == "C" & tab$Alt_A == "A", tab[,6], tab$A2)
+  tab$A2 <- ifelse(tab$Ref_A == "C" & tab$Alt_A == "G", tab[,6], tab$A2)
+  tab$A2 <- ifelse(tab$Ref_A == "C" & tab$Alt_A == "T", tab[,5], tab$A2)
+  tab$A2 <- ifelse(tab$Ref_A == "G" & tab$Alt_A == "A", tab[,6], tab$A2)
+  tab$A2 <- ifelse(tab$Ref_A == "G" & tab$Alt_A == "C", tab[,6], tab$A2)
+  tab$A2 <- ifelse(tab$Ref_A == "G" & tab$Alt_A == "T", tab[,4], tab$A2)
+  tab$A2 <- ifelse(tab$Ref_A == "T" & tab$Alt_A == "A", tab[,5], tab$A2)
+  tab$A2 <- ifelse(tab$Ref_A == "T" & tab$Alt_A == "C", tab[,5], tab$A2)
+  tab$A2 <- ifelse(tab$Ref_A == "T" & tab$Alt_A == "G", tab[,4], tab$A2)
   tab <- tab[,c(1:2,11:16)]
   
-  tab$P_REF <- round(100/(as.numeric(tab$REF) + as.numeric(tab$ALT)) * as.numeric(tab$REF), 0)
+  tab$P_Ref <- round(100/(as.numeric(tab$Ref) + as.numeric(tab$Alt)) * as.numeric(tab$Ref), 0)
   
-  tab$minReads <- ifelse(as.numeric(tab$REF) + as.numeric(tab$ALT) < minReads, "no", "yes")
+  tab$minReads <- ifelse(as.numeric(tab$Ref) + as.numeric(tab$Alt) < minReads, "no", "yes")
  
   if (type=='germline') {
-    tab$Homo <- ifelse(tab$P_REF == 100 | tab$P_REF <= percentHomo, "yes", "no")
-    tab$Conta <- as.numeric(ifelse(tab$P_REF >= (100 - maxContLevelGerm), tab$ALT, tab$REF))
-    tab$Geno_A <- ifelse(tab$P_REF >= (100 - maxContLevelGerm), tab$REF_A, tab$ALT_A)
-    tab$Conta_A <- ifelse(tab$P_REF >= (100 - maxContLevelGerm), tab$ALT_A, tab$REF_A)  
+    tab$Homo <- ifelse(tab$P_Ref == 100 | tab$P_Ref <= percentHomo, "yes", "no")
+    tab$Conta <- as.numeric(ifelse(tab$P_Ref >= (100 - maxContLevelGerm), tab$Alt, tab$Ref))
+    tab$Geno_A <- ifelse(tab$P_Ref >= (100 - maxContLevelGerm), tab$Ref_A, tab$Alt_A)
+    tab$Conta_A <- ifelse(tab$P_Ref >= (100 - maxContLevelGerm), tab$Alt_A, tab$Ref_A)  
     
     tab <- subset(tab, Homo == 'yes' & minReads == 'yes')
     
     tab_QC <- tab
-    tab_QC$Norm <- as.numeric(ifelse(tab_QC$P_REF >= 90, tab_QC$REF, tab_QC$ALT))
+    tab_QC$Norm <- as.numeric(ifelse(tab_QC$P_Ref >= 90, tab_QC$Ref, tab_QC$Alt))
     tab_QC$ProContaAlt <- 100 / (tab_QC$Norm+tab_QC$Conta + tab_QC$A1 + tab_QC$A2) * (tab_QC$Conta)
     tab_QC$ProContaA1 <- 100 / (tab_QC$Norm+tab_QC$Conta + tab_QC$A1 + tab_QC$A2) * (tab_QC$A1)
     tab_QC$ProContaA2 <- 100 / (tab_QC$Norm+tab_QC$Conta + tab_QC$A1 + tab_QC$A2) * (tab_QC$A2)
@@ -102,7 +102,7 @@ library(GenomicRanges)
                NumSNP_Alt = length(which(as.numeric(tab_QC[ ,12]) > contPerSNP)),
                NumSNP_A1 = length(which(as.numeric(tab_QC[ ,7]) > contPerSNP)),
                NumSNP_A2 = length(which(as.numeric(tab_QC[ ,8]) > contPerSNP)),
-               Sum_ALT = sum(as.numeric(tab_QC[ ,12])),
+               Sum_Alt = sum(as.numeric(tab_QC[ ,12])),
                Sum_A1 = sum(as.numeric(tab_QC[ ,7])),
                Sum_A2 = sum(as.numeric(tab_QC[ ,8])),
                Percent_Alt = 100 / dim(tab_QC)[1] * length(which(as.numeric(tab_QC[ ,12]) > contPerSNP)),
@@ -114,14 +114,14 @@ library(GenomicRanges)
                Type = 'Germline'
     )
     QC$Background <- ifelse(QC$PercentCont_A1 > QC$PercentCont_A2, QC$PercentCont_A1, QC$PercentCont_A2)
-    QC$ContAdj <- ifelse(QC$N_HOMO / 100 * QC$Percent_Alt > aberrantSNP, 2 * (QC$PercentCont_Alt - QC$Background), 0)
+    QC$ContAdj <- ifelse(QC$N_HOMO / 100 * (QC$Percent_Alt >= aberrantSNPPercent) & (QC$NumSNP_Alt >= aberrantSNP), 2 * (QC$PercentCont_Alt - QC$Background), 0)
     QC$ContAdj <- round(ifelse(QC$ContAdj < 0, 0, QC$ContAdj), 2)
   }
   
   if (type=='tumor') {
-    tab$Homo <- ifelse(tab$P_REF >= 90 | tab$P_REF <= 10 , "yes", "no")
-    tab$Conta <- tab$ALT
-    tab$Norm=tab$REF
+    tab$Homo <- ifelse(tab$P_Ref >= 90 | tab$P_Ref <= 10 , "yes", "no")
+    tab$Conta <- tab$Alt
+    tab$Norm=tab$Ref
     tab$ProContaAlt <- 100 / (tab$Norm + tab$Conta + tab$A1 + tab$A2) * (tab$Conta)
     tab$ProContaA1 <-  100 / (tab$Norm + tab$Conta + tab$A1 + tab$A2) * (tab$A1)
     tab$ProContaA2 <- 100 / (tab$Norm + tab$Conta + tab$A1 + tab$A2) * (tab$A2)
@@ -142,44 +142,44 @@ library(GenomicRanges)
                Type = 'Tumor'
     )
     QC$Background <- ifelse(QC$PercentCont_A1 > QC$PercentCont_A2, QC$PercentCont_A1, QC$PercentCont_A2)
-    QC$ContAdj <- ifelse(QC$N_HOMO / 100 * QC$Percent_Alt > aberrantSNP, 2 * (QC$PercentCont_Alt - QC$Background), 0)
+    QC$ContAdj <- ifelse(QC$N_HOMO / 100 * (QC$Percent_Alt >= aberrantSNPPercent) & (QC$NumSNP_Alt >= aberrantSNP), 2 * (QC$PercentCont_Alt - QC$Background), 0)
     QC$ContAdj <- round(ifelse(QC$ContAdj < 0, 0, QC$ContAdj), 2)
   }
   return(list(QC=QC, tab=tab))
 }
 
 estCont <- function(bamGermline, bamTumor, panel, mode='pair', percentHomo=10, minReads=50, maxContLevelGerm=10,
-                    min_base_quality=20, contPerSNP=0, aberrantSNP=3) {
+                    min_base_quality=20, contPerSNP=0, aberrantSNP=5, aberrantSNPPercent=10) {
   if(mode == 'pair') {
     ## GERMLINE
     vcf.ranges=GRanges(seqnames = panel$contig, 
                        ranges = IRanges(start=panel$position, end=panel$position), 
                        strand = "*", 
                        paramRangeID = NA, 
-                       REF = panel$ref_allele, 
-                       ALT = panel$alt_allele, 
+                       Ref = panel$ref_allele, 
+                       Alt = panel$alt_allele, 
                        QUAL = NA, 
                        FILTER = "REJECT", 
                        SNP = panel$SNP)
     res <- .readBam(bamGermline, vcf.ranges, min_base_quality)
     tab <- .pileupFreq(res)
     
-    QCGerm <- .qcTab('germline', vcf.ranges, tab, contPerSNP, maxContLevelGerm, minReads, percentHomo, aberrantSNP)
+    QCGerm <- .qcTab('germline', vcf.ranges, tab, contPerSNP, maxContLevelGerm, minReads, percentHomo, aberrantSNP, aberrantSNPPercent)
     
     ## TUMOR
     vcf.ranges2 <- GRanges(seqnames = QCGerm$tab$seqnames, 
                            ranges = IRanges(start=as.numeric(QCGerm$tab$start), end=as.numeric(QCGerm$tab$start)), 
                            strand = "*", 
                            paramRangeID = NA, 
-                           REF = QCGerm$tab$Geno_A, 
-                           ALT = QCGerm$tab$Conta_A, 
+                           Ref = QCGerm$tab$Geno_A, 
+                           Alt = QCGerm$tab$Conta_A, 
                            QUAL = NA, 
                            FILTER = "REJECT"
                            )
     resTumor <- .readBam(bamTumor, vcf.ranges2, min_base_quality)
     tabTumor <- .pileupFreq(resTumor)
     
-    QCTumor <- .qcTab('tumor', vcf.ranges2, tabTumor, contPerSNP, maxContLevelGerm, minReads, percentHomo, aberrantSNP)
+    QCTumor <- .qcTab('tumor', vcf.ranges2, tabTumor, contPerSNP, maxContLevelGerm, minReads, percentHomo, aberrantSNP, aberrantSNPPercent)
   } 
   
   if(mode == 'single') {
