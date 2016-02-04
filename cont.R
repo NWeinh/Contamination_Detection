@@ -165,6 +165,11 @@ estCont <- function(bamGermline, bamTumor, panel, mode='pair', percentHom=10, mi
       tryCatch({
         res <- .readBam(bamGermline, vcf.ranges, min_base_quality)
         tab <- .pileupFreq(res)
+        
+        if(dim(tab)[1] != length(vcf.ranges)) {
+        vcf.ranges <- vcf.ranges[start(vcf.ranges) %in% tab$start]
+      }
+        
         QCGerm <- .qcTab('germline', vcf.ranges, tab, contPerSNP, maxContLevelGerm, minReads, percentHom, aberrantSNP, aberrantSNPPercent)
       }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")})
       
