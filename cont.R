@@ -39,7 +39,7 @@ library(GenomicRanges)
   res
 }
 
-.qcTab <- function(type, ranges, tab, contPerSNP, maxContLevelGerm, minReads, percentHomo, aberrantSNP, aberrantSNPPercent) {
+.qcTab <- function(type, ranges, tab, contPerSNP, maxContLevelGerm, minReads, percentHom, aberrantSNP, aberrantSNPPercent) {
   tab$Ref_A <- as.vector(ranges$Ref)
   tab$Alt_A <- as.vector(ranges$Alt)
   tab$Ref <- NA
@@ -85,12 +85,12 @@ library(GenomicRanges)
   tab$minReads <- ifelse(as.numeric(tab$Ref) + as.numeric(tab$Alt) < minReads, "no", "yes")
  
   if (type=='germline') {
-    tab$Homo <- ifelse(tab$P_Ref == 100 | tab$P_Ref <= percentHomo, "yes", "no")
+    tab$Hom <- ifelse(tab$P_Ref == 100 | tab$P_Ref <= percentHom, "yes", "no")
     tab$Conta <- as.numeric(ifelse(tab$P_Ref >= (100 - maxContLevelGerm), tab$Alt, tab$Ref))
     tab$Geno_A <- ifelse(tab$P_Ref >= (100 - maxContLevelGerm), tab$Ref_A, tab$Alt_A)
     tab$Conta_A <- ifelse(tab$P_Ref >= (100 - maxContLevelGerm), tab$Alt_A, tab$Ref_A)  
     
-    tab <- subset(tab, Homo == 'yes' & minReads == 'yes')
+    tab <- subset(tab, Hom == 'yes' & minReads == 'yes')
     
     tab_QC <- tab
     tab_QC$Norm <- as.numeric(ifelse(tab_QC$P_Ref >= 90, tab_QC$Ref, tab_QC$Alt))
@@ -98,7 +98,8 @@ library(GenomicRanges)
     tab_QC$ProContaA1 <- 100 / (tab_QC$Norm+tab_QC$Conta + tab_QC$A1 + tab_QC$A2) * (tab_QC$A1)
     tab_QC$ProContaA2 <- 100 / (tab_QC$Norm+tab_QC$Conta + tab_QC$A1 + tab_QC$A2) * (tab_QC$A2)
     
-    QC <- list(N_HOMO = dim(tab_QC)[1],
+    QC <- list(Type = 'Germline',
+               N_Hom = dim(tab_QC)[1],
                NumSNP_Alt = length(which(as.numeric(tab_QC[ ,12]) > contPerSNP)),
                NumSNP_A1 = length(which(as.numeric(tab_QC[ ,7]) > contPerSNP)),
                NumSNP_A2 = length(which(as.numeric(tab_QC[ ,8]) > contPerSNP)),
@@ -110,23 +111,23 @@ library(GenomicRanges)
                Percent_A2 = 100 / dim(tab_QC)[1] * length(which(as.numeric(tab_QC[ ,8]) > contPerSNP)),
                PercentCont_Alt = sum(tab_QC$ProContaAlt[which(as.numeric(tab_QC[ ,12]) > contPerSNP)]) / dim(tab)[1],
                PercentCont_A1 = sum(tab_QC$ProContaA1[which(as.numeric(tab_QC[ ,7]) > contPerSNP)]) / dim(tab)[1],
-               PercentCont_A2 = sum(tab_QC$ProContaA2[which(as.numeric(tab_QC[ ,8]) > contPerSNP)]) / dim(tab)[1],
-               Type = 'Germline'
+               PercentCont_A2 = sum(tab_QC$ProContaA2[which(as.numeric(tab_QC[ ,8]) > contPerSNP)]) / dim(tab)[1]
     )
     QC$Background <- ifelse(QC$PercentCont_A1 > QC$PercentCont_A2, QC$PercentCont_A1, QC$PercentCont_A2)
-    QC$ContAdj <- ifelse(QC$N_HOMO / 100 * (QC$Percent_Alt >= aberrantSNPPercent) & (QC$NumSNP_Alt >= aberrantSNP), 2 * (QC$PercentCont_Alt - QC$Background), 0)
-    QC$ContAdj <- round(ifelse(QC$ContAdj < 0, 0, QC$ContAdj), 2)
+    QC$EstCont <- ifelse(QC$N_Hom / 100 * (QC$Percent_Alt >= aberrantSNPPercent) & (QC$NumSNP_Alt >= aberrantSNP), 2 * (QC$PercentCont_Alt - QC$Background), 0)
+    QC$EstCont <- round(ifelse(QC$EstCont < 0, 0, QC$EstCont), 2)
   }
   
   if (type=='tumor') {
-    tab$Homo <- ifelse(tab$P_Ref >= 90 | tab$P_Ref <= 10 , "yes", "no")
+    tab$Hom <- ifelse(tab$P_Ref >= 90 | tab$P_Ref <= 10 , "yes", "no")
     tab$Conta <- tab$Alt
     tab$Norm=tab$Ref
     tab$ProContaAlt <- 100 / (tab$Norm + tab$Conta + tab$A1 + tab$A2) * (tab$Conta)
     tab$ProContaA1 <-  100 / (tab$Norm + tab$Conta + tab$A1 + tab$A2) * (tab$A1)
     tab$ProContaA2 <- 100 / (tab$Norm + tab$Conta + tab$A1 + tab$A2) * (tab$A2)
     
-    QC <- list(N_HOMO = dim(tab)[1],
+    QC <- list(Type = 'Tumor',
+               N_Hom = dim(tab)[1],
                NumSNP_Alt = length(which(as.numeric(tab[ ,12]) > contPerSNP)),
                NumSNP_A1 = length(which(as.numeric(tab[ ,7]) > contPerSNP)),
                NumSNP_A2 = length(which(as.numeric(tab[ ,8]) > contPerSNP)),
@@ -138,58 +139,71 @@ library(GenomicRanges)
                Percent_A2 = 100 / dim(tab)[1] * length(which(as.numeric(tab[ ,8]) > contPerSNP)),
                PercentCont_Alt = sum(tab$ProContaAlt[which(as.numeric(tab[ ,12]) > contPerSNP)]) / dim(tab)[1],
                PercentCont_A1 = sum(tab$ProContaA1[which(as.numeric(tab[ ,7]) > contPerSNP)]) / dim(tab)[1],
-               PercentCont_A2 = sum(tab$ProContaA2[which(as.numeric(tab[ ,8]) > contPerSNP)]) / dim(tab)[1],
-               Type = 'Tumor'
+               PercentCont_A2 = sum(tab$ProContaA2[which(as.numeric(tab[ ,8]) > contPerSNP)]) / dim(tab)[1]
     )
     QC$Background <- ifelse(QC$PercentCont_A1 > QC$PercentCont_A2, QC$PercentCont_A1, QC$PercentCont_A2)
-    QC$ContAdj <- ifelse(QC$N_HOMO / 100 * (QC$Percent_Alt >= aberrantSNPPercent) & (QC$NumSNP_Alt >= aberrantSNP), 2 * (QC$PercentCont_Alt - QC$Background), 0)
-    QC$ContAdj <- round(ifelse(QC$ContAdj < 0, 0, QC$ContAdj), 2)
+    QC$EstCont <- ifelse(QC$N_Hom / 100 * (QC$Percent_Alt >= aberrantSNPPercent) & (QC$NumSNP_Alt >= aberrantSNP), 2 * (QC$PercentCont_Alt - QC$Background), 0)
+    QC$EstCont <- round(ifelse(QC$EstCont < 0, 0, QC$EstCont), 2)
   }
   return(list(QC=QC, tab=tab))
 }
 
-estCont <- function(bamGermline, bamTumor, panel, mode='pair', percentHomo=10, minReads=50, maxContLevelGerm=10,
+estCont <- function(bamGermline, bamTumor, panel, mode='pair', percentHom=10, minReads=50, maxContLevelGerm=10,
                     min_base_quality=20, contPerSNP=0, aberrantSNP=5, aberrantSNPPercent=10) {
-  if(mode == 'pair') {
-    ## GERMLINE
-    vcf.ranges=GRanges(seqnames = panel$contig, 
-                       ranges = IRanges(start=panel$position, end=panel$position), 
-                       strand = "*", 
-                       paramRangeID = NA, 
-                       Ref = panel$ref_allele, 
-                       Alt = panel$alt_allele, 
-                       QUAL = NA, 
-                       FILTER = "REJECT", 
-                       SNP = panel$SNP)
-    res <- .readBam(bamGermline, vcf.ranges, min_base_quality)
-    tab <- .pileupFreq(res)
+  if(file.exists(bamGermline) & file.exists(bamTumor)) {
+    if(mode == 'pair') {
+      ## GERMLINE
+      vcf.ranges=GRanges(seqnames = panel$contig, 
+                         ranges = IRanges(start=panel$position, end=panel$position), 
+                         strand = "*", 
+                         paramRangeID = NA, 
+                         Ref = panel$ref_allele, 
+                         Alt = panel$alt_allele, 
+                         QUAL = NA, 
+                         FILTER = "REJECT", 
+                         SNP = panel$SNP)
+      tryCatch({
+        res <- .readBam(bamGermline, vcf.ranges, min_base_quality)
+        tab <- .pileupFreq(res)
+        QCGerm <- .qcTab('germline', vcf.ranges, tab, contPerSNP, maxContLevelGerm, minReads, percentHom, aberrantSNP, aberrantSNPPercent)
+      }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")})
+      
+      ## TUMOR
+      vcf.ranges2 <- GRanges(seqnames = QCGerm$tab$seqnames, 
+                             ranges = IRanges(start=as.numeric(QCGerm$tab$start), end=as.numeric(QCGerm$tab$start)), 
+                             strand = "*", 
+                             paramRangeID = NA, 
+                             Ref = QCGerm$tab$Geno_A, 
+                             Alt = QCGerm$tab$Conta_A, 
+                             QUAL = NA, 
+                             FILTER = "REJECT"
+      )
+      resTumor <- .readBam(bamTumor, vcf.ranges2, min_base_quality)
+      tabTumor <- .pileupFreq(resTumor)
+      
+      if(dim(tabTumor)[1] != length(vcf.ranges2)) {
+        vcf.ranges2 <- vcf.ranges2[start(vcf.ranges2) %in% tabTumor$start]
+      }
+      
+      QCTumor <- .qcTab('tumor', vcf.ranges2, tabTumor, contPerSNP, maxContLevelGerm, minReads, percentHom, aberrantSNP, aberrantSNPPercent)
+    } 
     
-    QCGerm <- .qcTab('germline', vcf.ranges, tab, contPerSNP, maxContLevelGerm, minReads, percentHomo, aberrantSNP, aberrantSNPPercent)
-    
-    ## TUMOR
-    vcf.ranges2 <- GRanges(seqnames = QCGerm$tab$seqnames, 
-                           ranges = IRanges(start=as.numeric(QCGerm$tab$start), end=as.numeric(QCGerm$tab$start)), 
-                           strand = "*", 
-                           paramRangeID = NA, 
-                           Ref = QCGerm$tab$Geno_A, 
-                           Alt = QCGerm$tab$Conta_A, 
-                           QUAL = NA, 
-                           FILTER = "REJECT"
-                           )
-    resTumor <- .readBam(bamTumor, vcf.ranges2, min_base_quality)
-    tabTumor <- .pileupFreq(resTumor)
-    
-    QCTumor <- .qcTab('tumor', vcf.ranges2, tabTumor, contPerSNP, maxContLevelGerm, minReads, percentHomo, aberrantSNP, aberrantSNPPercent)
-  } 
-  
-  if(mode == 'single') {
-    print('No support for this, yet!')
+    if(mode == 'single') {
+      print('No support for this, yet!')
+    }
+    return(list(QCGerm=QCGerm$QC,
+                QCTumor=QCTumor$QC,
+                TabGerm=QCGerm$tab,
+                TabTumor=QCTumor$tab
+                )
+    )
+  } else {
+    return(list(QCGerm=NA,
+                QCTumor=NA,
+                TabGerm=NA,
+                TabTumor=NA
+                )
+    )
   }
-  return(list(QCGerm=QCGerm$QC,
-              QCTumor=QCTumor$QC,
-              TabGerm=QCGerm$tab,
-              TabTumor=QCTumor$tab
-              )
-         )
 }
 
