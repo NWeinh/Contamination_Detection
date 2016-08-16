@@ -2,8 +2,27 @@ library(plyr)
 
 source('cont.R')
 
-# read in the samples sheet
-samples <- read.csv2('sampleSheet.csv', sep=',', stringsAsFactors=F)
+# read in the samples sheet dna
+samples <- read.csv2('sampleSheet.csv', sep=',', stringsAsFactors=F)[,c(1:3)]
+samples <- samples[-which(samples$TUMOR=='' | samples$CONTROL==''),]
+samples <- samples[-which(file.size(samples$TUMOR) <= 1024 | file.size(samples$CONTROL) <= 1024), ]
+
+#read in samples rna
+samples <- read.csv2('sampleSheet.csv', sep=',', stringsAsFactors=F)[,c(1,2,4)]
+colnames(samples)[3] <- 'TUMOR'
+samples <- samples[-which(samples$TUMOR=='' | samples$CONTROL==''),]
+samples <- samples[-which(file.size(samples$TUMOR) <= 1024 | file.size(samples$CONTROL) <= 1024), ]
+
+#skip some samples...
+samples <- samples[-which(samples$SAMPLE_ID=='CCD025'),]
+samples <- samples[-which(samples$SAMPLE_ID=='CCD054'),]
+samples <- samples[-which(samples$SAMPLE_ID=='CCD055'),]
+samples <- samples[-which(samples$SAMPLE_ID=='CCD056'),]
+samples <- samples[-which(samples$SAMPLE_ID=='CCD108'),]
+samples <- samples[-which(samples$SAMPLE_ID=='CCD200-REP1'),]
+samples <- samples[-which(samples$SAMPLE_ID=='CCD273-REP1'),]
+samples <- samples[-which(samples$SAMPLE_ID=='CCD312'),]
+samples <- samples[-which(samples$SAMPLE_ID=='CCD315'),]
 
 # read in the SNP panel
 panel <- read.csv2("contPanel.csv", sep=",", stringsAsFactors = F)
@@ -13,6 +32,7 @@ panel$contig <- paste0('chr', panel$contig) # comment this out if your bam files
 
 # estimate contamination for list of samples in the sample sheet
 res <- apply(samples, 1, function(x) {
+  cat(paste0('Analyzing Sample: '), x['SAMPLE_ID'], '\n')
   estCont(x['CONTROL'], x['TUMOR'], panel)
 })
 names(res) <- samples$SAMPLE_ID
