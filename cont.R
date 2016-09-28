@@ -378,8 +378,13 @@ res <- apply(samples, 1, function(x) {
           opt$maxContLevelGerm,
           opt$min_base_quality,
           opt$contPerSNP,
+<<<<<<< HEAD
           opt$aberantSNP,
           opt$aberrantSNPPercent
+=======
+          opt$abberantSNP,
+          opt$abberantSNPPercent
+>>>>>>> b244537befd69eaebbcadb2e3cb283d834be8d50
           )
 })
 names(res) <- samples$SAMPLE_ID
@@ -394,7 +399,11 @@ options(warn = -1)
 df1 <- data.frame(Sample=rownames(df), df, stringsAsFactors = F)
 options(warn = oldw)
 df1 <- arrange(df1, Sample)
+<<<<<<< HEAD
 df1[sapply(df1, is.list)] <- apply(df1[sapply(df1, is.list)], 2, function(x) as.vector(unlist(x)))
+=======
+#df1[sapply(df1, is.list)] <- apply(df1[sapply(df1, is.list)], 2, function(x) as.vector(unlist(x)))
+>>>>>>> b244537befd69eaebbcadb2e3cb283d834be8d50
 
 # writting results
 cat(paste0('Writing results to '), opt$out, '\n')
