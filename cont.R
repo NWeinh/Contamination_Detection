@@ -378,13 +378,8 @@ res <- apply(samples, 1, function(x) {
           opt$maxContLevelGerm,
           opt$min_base_quality,
           opt$contPerSNP,
-<<<<<<< HEAD
           opt$aberantSNP,
           opt$aberrantSNPPercent
-=======
-          opt$abberantSNP,
-          opt$abberantSNPPercent
->>>>>>> b244537befd69eaebbcadb2e3cb283d834be8d50
           )
 })
 names(res) <- samples$SAMPLE_ID
