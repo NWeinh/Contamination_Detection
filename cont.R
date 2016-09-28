@@ -1,7 +1,130 @@
-library(Rsamtools)
-library(VariantAnnotation)
-library(GenomicRanges)
+###############################################################################
+## CONTA
+###############################################################################
+# Copyright (c) 2016 Tobias Meissner, Niels Weinhold
 
+# Permission is hereby granted, free of charge, to any person obtaining a copy 
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights 
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell 
+# copies of the Software, and to permit persons to whom the Software is 
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in 
+# all copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL 
+# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN 
+# THE SOFTWARE.
+
+#!/usr/local/bin/r
+
+###############################################################################
+# command line options
+###############################################################################
+packages <- function(x){
+  x<-as.character(match.call()[[2]])
+  if (!require(x, character.only=TRUE, quietly=TRUE)){
+    install.packages(pkgs=x, repos="http://cran.r-project.org", quiet=TRUE)
+    require(x, character.only=TRUE, quietly=TRUE)
+  }
+}
+packages(optparse)
+option_list = list(
+  make_option(c("-t", "--tumor"), type="character", default=NULL, 
+              help="tumor bam file(s) [REQUIRED]", metavar="character"),
+  make_option(c("-g", "--germline"), type="character", default=NULL, 
+              help="germline bam file(s) [REQUIRED]", metavar="character"),
+  make_option(c("-p", "--panel"), type="character", default=NULL, 
+              help="panel of SNPs for tracking/contaminatin estimation [REQUIRED]", 
+              metavar="character"),
+  make_option(c("-n", "--sampleName"), type="character", default=NULL, 
+              help="sample names(s) [REQUIRED]", metavar="character"),
+  make_option(c("-s", "--sampleSheet"), type="character", default=NULL, 
+              help="sample sheet that lists sample name(s),
+              tumor bam file location(s), germline bam file location(s) 
+              [REQUIRED]", metavar="character"),
+  make_option(c("-e", "--percentHom"), type="numeric", default=10, 
+              help="percent homozygous [default= %default]", 
+              metavar="numeric"),
+  make_option(c("-r", "--minReads"), type="numeric", default=50, 
+              help="minimum read depth at SNP position [default= %default]", 
+              metavar="numeric"),
+  make_option(c("-c", "--maxContLevelGerm"), type="numeric", default=10, 
+              help="max contamination germline sample [default= %default]", 
+              metavar="numeric"),
+  make_option(c("-q", "--min_base_quality"), type="numeric", default=20, 
+              help="minimum base quality [default= %default]", 
+              metavar="numeric"),
+  make_option(c("-x", "--contPerSNP"), type="numeric", default=0, 
+              help="contamination per SNP [default= %default]", 
+              metavar="numeric"),
+  make_option(c("-a", "--aberrantSNP"), type="numeric", default=5, 
+              help="number abberant SNPs [default= %default]", 
+              metavar="numeric"),
+  make_option(c("-z", "--aberrantSNPPercent"), type="numeric", default=10, 
+              help="percent abberant SNPs [default= %default]", 
+              metavar="numeric"),
+  make_option(c("-m", "--mode"), type="character", default='pair', 
+              help="analysis mode [default= %default]", 
+              metavar="character"),
+  make_option(c("-o", "--out"), type="character", default="conta.txt", 
+              help="output file name [default= %default]", metavar="character"),
+  make_option(c("-v", "--verbose"), type="logical", default=F, 
+              help="get more detailed output [default= %default]", 
+              metavar="logical")
+)
+
+opt_parser = OptionParser(option_list=option_list)
+opt = parse_args(opt_parser)
+
+if (is.null(opt$tumor) & is.null(opt$sampleSheet)){
+  print_help(opt_parser)
+  stop("(A) tumor sample(s) or sample sheet must be supplied", call.=FALSE)
+}
+if (is.null(opt$germline)  & is.null(opt$sampleSheet)){
+  print_help(opt_parser)
+  stop("(A) germline sample(s) or sample sheet must be supplied", call.=FALSE)
+}
+if (is.null(opt$panel)){
+  print_help(opt_parser)
+  stop("A SNP panel must be supplied", call.=FALSE)
+}
+if (is.null(opt$sampleName) & is.null(opt$sampleSheet)){
+  print_help(opt_parser)
+  stop("(A) sample name(s) or sample sheet must be supplied", call.=FALSE)
+}
+
+# if there are multiple tumor/germline input files, split by seperator (comma)
+if(is.null(opt$sampleSheet)) {
+  opt$tumor <- unlist(strsplit(opt$tumor, split=','))
+  opt$germline <- unlist(strsplit(opt$germline, split=','))
+  opt$sampleName <- unlist(strsplit(opt$sampleName, split=','))  
+} 
+
+###############################################################################
+# load and install required packages if needed
+###############################################################################
+
+if(opt$verbose) {
+  packages(Rsamtools)
+  packages(VariantAnnotation)
+  packages(GenomicRanges)
+  packages(plyr)
+} else {
+  msg.trap <- capture.output(suppressMessages(packages(Rsamtools)))
+  msg.trap <- capture.output(suppressMessages(packages(VariantAnnotation)))
+  msg.trap <- capture.output(suppressMessages(packages(GenomicRanges)))
+  msg.trap <- capture.output(suppressMessages(packages(plyr)))
+}
+
+###############################################################################
+# functions
+###############################################################################
 .pileupFreq <- function(pileupres) {
   nucleotides <- levels(pileupres$nucleotide)
   res <- split(pileupres, pileupres$seqnames)
@@ -181,16 +304,17 @@ estCont <- function(bamGermline, bamTumor, panel, mode='pair', percentHom=10, mi
                              Ref = QCGerm$tab$Geno_A, 
                              Alt = QCGerm$tab$Conta_A, 
                              QUAL = NA, 
-                             FILTER = "REJECT"
-      )
-      resTumor <- .readBam(bamTumor, vcf.ranges2, min_base_quality)
-      tabTumor <- .pileupFreq(resTumor)
-      
-      if(dim(tabTumor)[1] != length(vcf.ranges2)) {
-        vcf.ranges2 <- vcf.ranges2[start(vcf.ranges2) %in% tabTumor$start]
-      }
-      
-      QCTumor <- .qcTab('tumor', vcf.ranges2, tabTumor, contPerSNP, maxContLevelGerm, minReads, percentHom, aberrantSNP, aberrantSNPPercent)
+                             FILTER = "REJECT")
+      tryCatch({
+        resTumor <- .readBam(bamTumor, vcf.ranges2, min_base_quality)
+        tabTumor <- .pileupFreq(resTumor)
+        
+        if(dim(tabTumor)[1] != length(vcf.ranges2)) {
+          vcf.ranges2 <- vcf.ranges2[start(vcf.ranges2) %in% tabTumor$start]
+        }
+        
+        QCTumor <- .qcTab('tumor', vcf.ranges2, tabTumor, contPerSNP, maxContLevelGerm, minReads, percentHom, aberrantSNP, aberrantSNPPercent)
+        }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")})
     } 
     
     if(mode == 'single') {
@@ -212,3 +336,71 @@ estCont <- function(bamGermline, bamTumor, panel, mode='pair', percentHom=10, mi
   }
 }
 
+###############################################################################
+# read in the SNP panel
+###############################################################################
+panel <- read.csv2(opt$panel, sep=",", stringsAsFactors = F)
+panel <- panel[with(panel,order(contig,position)),]
+panel$contig <- paste0('chr', panel$contig)
+
+###############################################################################
+# estimate contamination 
+###############################################################################
+if(is.null(opt$sampleSheet)) {
+  samples <- data.frame(SAMPLE_ID=opt$sampleName,
+                        CONTROL=opt$germline,
+                        TUMOR=opt$tumor)  
+} else {
+  samples <- opt$sampleSheet
+  samples <- read.csv2(opt$sampleSheet, sep=',', stringsAsFactors=F)
+}
+
+cat('Running analysis with the following settings .. \n')
+cat(paste0('  Number of samples to be analyzed: ', dim(samples)[1], '\n'))
+cat(paste0('  Mode: ', opt$mode, '\n'))
+cat(paste0('  Percent Hom.: ', opt$percentHom, '\n'))
+cat(paste0('  Min. Reads: ', opt$minReads, '\n'))
+cat(paste0('  Max. Cont. Level Germ.: ', opt$maxContLevelGerm, '\n'))
+cat(paste0('  Min. Base Qual: ', opt$min_base_quality, '\n'))
+cat(paste0('  Cont. per SNP: ', opt$contPerSNP, '\n'))
+cat(paste0('  Abberant SNPs: ', opt$aberrantSNP, '\n'))
+cat(paste0('  Abberant SNPs Percent: ', opt$aberrantSNPPercent, '\n'))
+cat('\n')
+
+res <- apply(samples, 1, function(x) {
+  cat(paste0('Analyzing Sample: '), x['SAMPLE_ID'], '\n')
+  estCont(x['CONTROL'], 
+          x['TUMOR'], 
+          panel,
+          opt$mode,
+          opt$percentHom,
+          opt$minReads,
+          opt$maxContLevelGerm,
+          opt$min_base_quality,
+          opt$contPerSNP,
+          opt$aberantSNP,
+          opt$aberrantSNPPercent
+          )
+})
+names(res) <- samples$SAMPLE_ID
+
+# format the output for tabular display
+df <- rbind(do.call(rbind, lapply(res, '[[', 1)),
+            do.call(rbind, lapply(res, '[[', 2))
+)
+# dont throw a warning here...
+oldw <- getOption("warn")
+options(warn = -1)
+df1 <- data.frame(Sample=rownames(df), df, stringsAsFactors = F)
+options(warn = oldw)
+df1 <- arrange(df1, Sample)
+df1[sapply(df1, is.list)] <- apply(df1[sapply(df1, is.list)], 2, function(x) as.vector(unlist(x)))
+
+# writting results
+cat(paste0('Writing results to '), opt$out, '\n')
+write.table(df1, 
+          opt$out, 
+          row.names = F, 
+          quote = F,
+          sep='\t'
+)
