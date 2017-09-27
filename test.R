@@ -2,43 +2,23 @@ library(plyr)
 
 source('cont.R')
 
-<<<<<<< HEAD
-# read in the samples sheet
-=======
 # read in the samples sheet dna
->>>>>>> b244537befd69eaebbcadb2e3cb283d834be8d50
 samples <- read.csv2('sampleSheet.csv', sep=',', stringsAsFactors=F)[,c(1:3)]
 samples <- samples[-which(samples$TUMOR=='' | samples$CONTROL==''),]
 samples <- samples[-which(file.size(samples$TUMOR) <= 1024 | file.size(samples$CONTROL) <= 1024), ]
 
-<<<<<<< HEAD
-=======
-#read in samples rna
-samples <- read.csv2('sampleSheet.csv', sep=',', stringsAsFactors=F)[,c(1,2,4)]
-colnames(samples)[3] <- 'TUMOR'
-samples <- samples[-which(samples$TUMOR=='' | samples$CONTROL==''),]
-samples <- samples[-which(file.size(samples$TUMOR) <= 1024 | file.size(samples$CONTROL) <= 1024), ]
-
->>>>>>> b244537befd69eaebbcadb2e3cb283d834be8d50
 #skip some samples...
 samples <- samples[-which(samples$SAMPLE_ID=='CCD025'),]
 samples <- samples[-which(samples$SAMPLE_ID=='CCD054'),]
 samples <- samples[-which(samples$SAMPLE_ID=='CCD055'),]
 samples <- samples[-which(samples$SAMPLE_ID=='CCD056'),]
 samples <- samples[-which(samples$SAMPLE_ID=='CCD108'),]
-<<<<<<< HEAD
-=======
-samples <- samples[-which(samples$SAMPLE_ID=='CCD200-REP1'),]
-samples <- samples[-which(samples$SAMPLE_ID=='CCD273-REP1'),]
-samples <- samples[-which(samples$SAMPLE_ID=='CCD312'),]
-samples <- samples[-which(samples$SAMPLE_ID=='CCD315'),]
->>>>>>> b244537befd69eaebbcadb2e3cb283d834be8d50
 
 # read in the SNP panel
 panel <- read.csv2("contPanel.csv", sep=",", stringsAsFactors = F)
 panel <- panel[with(panel,order(contig,position)),]
 panel$contig <- paste0('chr', panel$contig) # comment this out if your bam files don't use the chr notations for chromosomes
-#panel <- subset(panel, Source=='BMCMED') # remove comment if you only want to use SNPs from this publication: 
+#panel <- subset(panel, Source=='BMCMED') # remove comment if you only want to use SNPs from this publication:
 
 # estimate contamination for list of samples in the sample sheet
 res <- apply(samples, 1, function(x) {
