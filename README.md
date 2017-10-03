@@ -21,7 +21,7 @@ For multiple samples, modify file sampleSheet.csv and add sample IDs as well as 
 Rscript cont.R -s <SAMPLESHEET> -p <contPanel.csv> -o <OUTFILE>
 ```
 
-### List of available comandline Options
+### List of available command line Options
 
 ```
         -t CHARACTER, --tumor=CHARACTER
