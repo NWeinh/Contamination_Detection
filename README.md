@@ -2,7 +2,7 @@
 
 ### Analyze a single sample
 
-For a single tumor/normal pair execute the Contamination Detection script:
+For a single tumor/normal pair execute the contamination detection script:
 
 ```
 Rscript cont.R -t <TUMOR BAM> -g <GERMLINE BAM> -n <SAMPLE ID> -p <PATH TO contPanel.csv> -o <OUTFILE>
@@ -19,7 +19,6 @@ For multiple samples, modify file sampleSheet.csv and add sample IDs as well as 
 
 ```
 Rscript cont.R -s <SAMPLESHEET> -p <contPanel.csv> -o <OUTFILE>
-
 ```
 
 ### List of available comandline Options
@@ -74,5 +73,4 @@ Rscript cont.R -s <SAMPLESHEET> -p <contPanel.csv> -o <OUTFILE>
 
         -h, --help
                 Show this help message and exit
-
 ```
